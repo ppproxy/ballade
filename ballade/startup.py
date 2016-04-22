@@ -23,7 +23,7 @@ def main():
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     parser = argparse.ArgumentParser(
-        description='ballade is a light weight http proxy based on tornado, especially a switcher for SwitchyOmega rules')
+        description='ballade is a light weight http proxy based on tornado and an upstream proxy switcher using SwitchyOmega rules')
     parser.add_argument('-c', '--configdir', type=str,
                         help='Config directory path like /home/xxx/')
     args = parser.parse_args()

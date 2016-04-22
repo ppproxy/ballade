@@ -1,8 +1,8 @@
 # ballade
 
-Current version: 0.95.2
+Current version: 0.95.3
 
-Ballade is a light weight http proxy based on tornado, especially a switcher for [SwitchyOmega](https://github.com/FelisCatus/SwitchyOmega) rules 
+Ballade is a light weight http proxy based on tornado and an upstream proxy switcher using [SwitchyOmega](https://github.com/FelisCatus/SwitchyOmega) rules 
 
 Ballade means ballade tempo, not that fast ~
 

@@ -3,9 +3,9 @@ from setuptools import setup, find_packages
 
 setup(
     name="ballade",
-    version="0.95.2",
+    version="0.95.3",
     license='https://opensource.org/licenses/MIT',
-    description="A light weight http proxy based on tornado, especially a switcher for SwitchyOmega rules",
+    description="A light weight http proxy based on tornado and an upstream proxy switcher using SwitchyOmega rules",
     author='holyshawn',
     author_email='holyshawn@outlook.com',
     url='https://github.com/holyshawn/ballade',
