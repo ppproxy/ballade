@@ -23,10 +23,11 @@ def main():
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     parser = argparse.ArgumentParser(
-        description='A fast proxy switcher based on tornado built for SwitchyOmega rules')
+        description='ballade is a light weight http proxy based on tornado, especially a switcher for SwitchyOmega rules')
     parser.add_argument('-c', '--configdir', type=str,
                         help='Config directory path like /home/xxx/')
     args = parser.parse_args()
+    print("If you need any help, please visit project website: https://github.com/holyshawn/ballade")
 
     config_dir = get_config_dir()
     if args.configdir:
