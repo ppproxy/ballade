@@ -75,9 +75,18 @@ def omega_converter(config, source, destination):
 
 
 def hostport_parser(hostport, default_port):
-    i = hostport.find(b':' if isinstance(hostport, bytes) else ':')
+    # Because IPv6 address hostport like "2001:067c:04e8:f004:0000:0000:0000:000a:443"
+    # Must use rfind to find ":"
+    # RFC2396 Uniform Resource Identifiers (URI): Generic Syntax was updated by
+    # RFC2732 Format for Literal IPv6 Addresses in URL's. Specifically, section 3 in RFC2732.
+    i = hostport.rfind(b':' if isinstance(hostport, bytes) else ':')
     if i >= 0:
-        return hostport[:i], int(hostport[i + 1:])
+        # Type of bytes' element is int
+        if hostport[0] == ord('['):  # If address with bracket
+            host = hostport[1:i-1]
+        else:
+            host = hostport[:i]
+        return host, int(hostport[i + 1:])
     else:
         return hostport, default_port
 

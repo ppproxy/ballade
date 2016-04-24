@@ -179,7 +179,7 @@ class RulesConnector(Connector):
     def __init__(self, netloc=None, path=None, config=None):
         Connector.__init__(self, netloc, path)
         self.ipv6_accessible = is_ipv6_accessible(config)
-        logging.info("IPv6 direct enabled" if self.ipv6_accessible else "IPv6 direct disabled")
+        logging.info("IPv6 direct" + "enabled" if self.ipv6_accessible else "disabled")
         self.rules = None
         self._connectors = {}
         self.load_rules()
@@ -222,7 +222,7 @@ class RulesConnector(Connector):
             if re.match(rule, s):
                 if upstream not in self._connectors:
                     self._connectors[upstream] = Connector.get(upstream, self.ipv6_accessible)
-                logging.info('-> ' + self._connectors[upstream].__str__() + ' -> ' + s)
+                logging.info("Use " + self._connectors[upstream].__str__() + " to connect")
                 self._connectors[upstream].connect(host, port, callback)
                 break
         else:
@@ -231,7 +231,7 @@ class RulesConnector(Connector):
 
 class ProxyHandler:
 
-    def __init__(self, stream, connector):
+    def __init__(self, stream, address, connector):
         self.connector = connector
 
         self.incoming = stream
@@ -243,13 +243,13 @@ class ProxyHandler:
         self.headers = None
         self.outgoing = None
 
+        self.request_ip, self.request_port = address[0], address[1]
+
     def on_method(self, method):
-        logging.info(method.decode('utf-8').replace('\n',''))
         try:
             self.method, self.url, self.ver = method.strip().split()
         except ValueError:
-            logging.error("This method is not supported: " + method.decode('utf-8'))
-        # XXX would fail if the request doesn't have any more headers
+            logging.error("This method is not supported.")
         self.incoming.read_until(b'\r\n\r\n', self.on_headers)
         logging.debug(method.strip().decode())
 
@@ -285,6 +285,10 @@ class ProxyHandler:
 
     def on_headers(self, headers_buffer):
         self.headers = OrderedDict(header_parser(headers_buffer))
+        logging.info(self.request_ip + ':' + str(self.request_port) + ' -> ' +
+                     ' '.join([self.method.decode(),
+                               self.url.decode(),
+                               self.ver.decode()]))
         if self.method == b'CONNECT':
             host, port = hostport_parser(self.url, 443)
             self.outgoing = self.connector.connect(
@@ -308,4 +312,4 @@ class ProxyServer(tornado.tcpserver.TCPServer):
         self.connector = connector or DirectConnector()
 
     def handle_stream(self, stream, address):
-        ProxyHandler(stream, self.connector)
+        ProxyHandler(stream, address, self.connector)
