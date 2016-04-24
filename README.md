@@ -35,8 +35,8 @@ Or install from source:
     
 After install, just run
 
-    ballade # Start with the default config directory -> $HOME($HOMEPATH)/.config/ballade
-    ballade -c /home/xxx/.config/ballade # Use your own config directory
+    ballade # Start with the default config directory -> $HOME($HOMEPATH)/.config/ballade/
+    ballade -c /home/xxx/.config/ballade/ # Use your own config directory
 
 ###  Configuration Syntax
 

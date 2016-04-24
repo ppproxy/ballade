@@ -245,7 +245,10 @@ class ProxyHandler:
 
     def on_method(self, method):
         logging.info(method.decode('utf-8').replace('\n',''))
-        self.method, self.url, self.ver = method.strip().split(b' ')
+        try:
+            self.method, self.url, self.ver = method.strip().split()
+        except ValueError:
+            logging.error("This method is not supported: " + method.decode('utf-8'))
         # XXX would fail if the request doesn't have any more headers
         self.incoming.read_until(b'\r\n\r\n', self.on_headers)
         logging.debug(method.strip().decode())
