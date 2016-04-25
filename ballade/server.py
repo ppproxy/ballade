@@ -84,9 +84,9 @@ class DirectConnector(Connector):
             callback(stream)
 
         if has_ipv6_address(host) and self.ipv6_accessible:
-            s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM, 0)
+            s = get_socket(ipv6=True, keep_alive=True)
         else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            s = get_socket(ipv6=False, keep_alive=True)
         stream = tornado.iostream.IOStream(s)
         stream.set_close_callback(on_close)
         stream.connect((host, port), on_connected)
@@ -124,7 +124,7 @@ class Socks5Connector(Connector):
             except tornado.iostream.StreamClosedError:
                 socks5_close()
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        s = get_socket(ipv6=False, keep_alive=True)
         stream = tornado.iostream.IOStream(s)
         stream.set_close_callback(socks5_close)
         stream.connect((self.socks5_server, self.socks5_port), socks5_connected)
@@ -166,7 +166,7 @@ class HttpConnector(Connector):
             except tornado.iostream.StreamClosedError:
                 http_close()
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        s = get_socket(ipv6=False, keep_alive=True)
         stream = tornado.iostream.IOStream(s)
         stream.set_close_callback(http_close)
         stream.connect((self.http_server, self.http_port), http_connected)
@@ -179,7 +179,7 @@ class RulesConnector(Connector):
     def __init__(self, netloc=None, path=None, config=None):
         Connector.__init__(self, netloc, path)
         self.ipv6_accessible = is_ipv6_accessible(config)
-        logging.info("IPv6 direct" + "enabled" if self.ipv6_accessible else "disabled")
+        logging.info("IPv6 direct " + "enabled" if self.ipv6_accessible else "disabled")
         self.rules = None
         self._connectors = {}
         self.load_rules()
@@ -212,21 +212,17 @@ class RulesConnector(Connector):
             self._modify_time = modified
             self.load_rules()
 
-    @classmethod
-    def accept(cls, scheme):
-        return scheme == 'rules'
-
     def connect(self, host, port, callback):
         s = host.decode() + ':' + str(port)
         for rule, upstream in self.rules:
             if re.match(rule, s):
                 if upstream not in self._connectors:
                     self._connectors[upstream] = Connector.get(upstream, self.ipv6_accessible)
-                logging.info("Use " + self._connectors[upstream].__str__() + " to connect")
+                logging.info("Use " + self._connectors[upstream].__str__() + " to connect " + s)
                 self._connectors[upstream].connect(host, port, callback)
                 break
         else:
-            raise RuntimeError('no available rule for %s' % s)
+            raise RuntimeError('No available rule for %s' % s)
 
 
 class ProxyHandler:
@@ -234,82 +230,84 @@ class ProxyHandler:
     def __init__(self, stream, address, connector):
         self.connector = connector
 
-        self.incoming = stream
-        self.incoming.read_until(b'\r\n', self.on_method)
+        self.inbound = stream
+        self.inbound.read_until(b'\r\n', self.on_start_line)
+
+        self.client_ip, self.client_port = address[0], address[1]
 
         self.method = None
-        self.url = None
-        self.ver = None
-        self.headers = None
-        self.outgoing = None
+        self.request_url = None
+        self.version = None
+        self.header_dict = None
+        self.outbound = None
 
-        self.request_ip, self.request_port = address[0], address[1]
-
-    def on_method(self, method):
+    def on_start_line(self, method):
         try:
-            self.method, self.url, self.ver = method.strip().split()
+            self.method, self.request_url, self.version = method.strip().split()
         except ValueError:
-            logging.error("This method is not supported.")
-        self.incoming.read_until(b'\r\n\r\n', self.on_headers)
-        logging.debug(method.strip().decode())
+            logging.error("This is not HTTP protocol.")
+        self.inbound.read_until(b'\r\n\r\n', self.on_header)
 
-    def on_connected(self, outgoing):
-        if outgoing:
+    def on_connected(self, outbound):
+        if outbound:
             try:
-                path = urlunparse((b'', b'') + urlparse(self.url)[2:])
-                outgoing.write(b' '.join((self.method, path, self.ver)) + b'\r\n')
-                for k, v in self.headers.items():
-                    outgoing.write(k + b': ' + v + b'\r\n')
-                outgoing.write(b'\r\n')
-                writer_in = write_to(self.incoming)
-                if b'Content-Length' in self.headers:
-                    self.incoming.read_bytes(
-                        int(self.headers[b'Content-Length']), outgoing.write, outgoing.write)
-                outgoing.read_until_close(writer_in, writer_in)
+                path = urlunparse((b'', b'') + urlparse(self.request_url)[2:])
+                outbound.write(b' '.join((self.method, path, self.version)) + b'\r\n')
+                for k, v in self.header_dict.items():
+                    outbound.write(k + b': ' + v + b'\r\n')
+                outbound.write(b'\r\n')
+                writer_in = write_to(self.inbound)
+                if b'Content-Length' in self.header_dict:
+                    self.inbound.read_bytes(
+                        int(self.header_dict[b'Content-Length']), outbound.write, outbound.write)
+                outbound.read_until_close(writer_in, writer_in)
             except tornado.iostream.StreamClosedError:
-                self.incoming.close()
-                outgoing.close()
+                self.inbound.close()
+                outbound.close()
         else:
-            self.incoming.close()
+            self.inbound.close()
 
-    def on_connect_connected(self, outgoing):
-        if outgoing:
+    def on_connect_connected(self, outbound):
+        if outbound:
             try:
-                self.incoming.write(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+                self.inbound.write(b'HTTP/1.1 200 Connection Established\r\n\r\n')
             except tornado.iostream.StreamClosedError:
-                self.incoming.close()
-                outgoing.close()
-            pipe(self.incoming, outgoing)
+                self.inbound.close()
+                outbound.close()
+            pipe(self.inbound, outbound)
         else:
-            self.incoming.close()
+            self.inbound.close()
 
-    def on_headers(self, headers_buffer):
-        self.headers = OrderedDict(header_parser(headers_buffer))
-        logging.info(self.request_ip + ':' + str(self.request_port) + ' -> ' +
+    def on_header(self, headers_buffer):
+        self.header_dict = OrderedDict(header_parser(headers_buffer))
+        logging.info(self.client_ip + ':' + str(self.client_port) + ' -> ' +
                      ' '.join([self.method.decode(),
-                               self.url.decode(),
-                               self.ver.decode()]))
+                               self.request_url.decode(),
+                               self.version.decode()]))
         if self.method == b'CONNECT':
-            host, port = hostport_parser(self.url, 443)
-            self.outgoing = self.connector.connect(
+            host, port = hostport_parser(self.request_url, 443)
+            self.outbound = self.connector.connect(
                 host, port, self.on_connect_connected)
         else:
-            if b'Proxy-Connection' in self.headers:
-                del self.headers[b'Proxy-Connection']
-            # self.headers[b'Connection'] = b'close'
-            if b'Host' in self.headers:
-                host, port = hostport_parser(self.headers[b'Host'], 80)
-                self.outgoing = self.connector.connect(
+            for header in [b'Proxy-Connection', b'Proxy-Authenticate']:
+                if header in self.header_dict.keys():
+                    del self.header_dict[header]
+                self.header_dict[b'Connection'] = b'Keep-Alive'
+            if b'Host' in self.header_dict:
+                host, port = hostport_parser(self.header_dict[b'Host'], 80)
+                self.outbound = self.connector.connect(
                     host, port, self.on_connected)
             else:
-                self.incoming.close()
+                self.inbound.close()
 
 
 class ProxyServer(tornado.tcpserver.TCPServer):
 
     def __init__(self, connector=None):
         tornado.tcpserver.TCPServer.__init__(self)
-        self.connector = connector or DirectConnector()
+        self.connector = connector
 
     def handle_stream(self, stream, address):
+        # 采用TCP Socket的keepalive
+        stream.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         ProxyHandler(stream, address, self.connector)

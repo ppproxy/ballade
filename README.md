@@ -1,6 +1,6 @@
 # ballade
 
-Current version: 0.95.4
+Current version: 0.96
 
 Ballade is a light weight http proxy based on tornado and an upstream proxy switcher using [SwitchyOmega](https://github.com/FelisCatus/SwitchyOmega) rules 
 
@@ -38,6 +38,9 @@ After install, just run
     ballade # Start with the default config directory -> $HOME($HOMEPATH)/.config/ballade/
     ballade -c /home/xxx/.config/ballade/ # Use your own config directory
     
+Help:
+    ballade -h # Will show some parameters you can give
+
 Upgrade:
 
     pip3 install ballade --upgrade
@@ -84,6 +87,7 @@ You can also make your own conf
 
 ## To Do
 
++ ~~Keep-Alive~~
 + Authentication
 
 ## Acknowledgements

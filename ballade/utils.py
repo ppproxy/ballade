@@ -7,6 +7,12 @@ import shutil
 import socket
 
 
+def get_socket(ipv6, keep_alive):
+    s = socket.socket(socket.AF_INET6 if ipv6 else socket.AF_INET, socket.SOCK_STREAM, 0)
+    if keep_alive:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+    return s
+
 def get_config_dir():
     if sys.platform == 'win32':
         home = os.environ['HOMEPATH']
