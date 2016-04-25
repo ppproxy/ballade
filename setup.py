@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="ballade",
-    version="0.96",
+    version="0.96.2",
     license='https://opensource.org/licenses/MIT',
     description="A light weight http proxy based on tornado and an upstream proxy switcher using SwitchyOmega rules",
     author='holyshawn',

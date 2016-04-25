@@ -1,6 +1,6 @@
 # ballade
 
-Current version: 0.96
+Current version: 0.96.2
 
 Ballade is a light weight http proxy based on tornado and an upstream proxy switcher using [SwitchyOmega](https://github.com/FelisCatus/SwitchyOmega) rules 
 
@@ -19,6 +19,7 @@ Because of os.fork() issue, ballade use only one process when runing on windows
 + TLS and HTTP protocols support
 + Switch rules include virtual profile support
 + Multiprocess support
++ Keep-Alive support
 + Some bugs fixed
 
 ## Usages
@@ -87,7 +88,6 @@ You can also make your own conf
 
 ## To Do
 
-+ ~~Keep-Alive~~
 + Authentication
 
 ## Acknowledgements

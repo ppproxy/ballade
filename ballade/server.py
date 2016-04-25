@@ -84,9 +84,9 @@ class DirectConnector(Connector):
             callback(stream)
 
         if has_ipv6_address(host) and self.ipv6_accessible:
-            s = get_socket(ipv6=True, keep_alive=True)
+            s = get_socket(ipv6=True)
         else:
-            s = get_socket(ipv6=False, keep_alive=True)
+            s = get_socket(ipv6=False)
         stream = tornado.iostream.IOStream(s)
         stream.set_close_callback(on_close)
         stream.connect((host, port), on_connected)
@@ -124,7 +124,7 @@ class Socks5Connector(Connector):
             except tornado.iostream.StreamClosedError:
                 socks5_close()
 
-        s = get_socket(ipv6=False, keep_alive=True)
+        s = get_socket()
         stream = tornado.iostream.IOStream(s)
         stream.set_close_callback(socks5_close)
         stream.connect((self.socks5_server, self.socks5_port), socks5_connected)
@@ -166,7 +166,7 @@ class HttpConnector(Connector):
             except tornado.iostream.StreamClosedError:
                 http_close()
 
-        s = get_socket(ipv6=False, keep_alive=True)
+        s = get_socket()
         stream = tornado.iostream.IOStream(s)
         stream.set_close_callback(http_close)
         stream.connect((self.http_server, self.http_port), http_connected)
@@ -309,5 +309,5 @@ class ProxyServer(tornado.tcpserver.TCPServer):
 
     def handle_stream(self, stream, address):
         # 采用TCP Socket的keepalive
-        stream.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        set_socket(stream.socket)
         ProxyHandler(stream, address, self.connector)

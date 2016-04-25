@@ -7,11 +7,20 @@ import shutil
 import socket
 
 
-def get_socket(ipv6, keep_alive):
-    s = socket.socket(socket.AF_INET6 if ipv6 else socket.AF_INET, socket.SOCK_STREAM, 0)
-    if keep_alive:
+def set_socket(s, keep_alive=True):
+    if keep_alive and sys.platform == 'linux':
         s.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 10)
+        s.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 6)
+        s.setsockopt(socket.SOL_TCP, socket.TCP_KEEPCNT, 3)
+
+
+def get_socket(ipv6=False, keep_alive=True):
+    s = socket.socket(socket.AF_INET6 if ipv6 else socket.AF_INET, socket.SOCK_STREAM, 0)
+    set_socket(s, keep_alive=keep_alive)
     return s
+
 
 def get_config_dir():
     if sys.platform == 'win32':
